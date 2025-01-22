@@ -12,6 +12,7 @@ type
   THorzLocation = (hlocLeft, hlocRight, hlocMiddle, hlocOther);
 
   TSizeableLabel = class(TCustomControl)
+  private
   const
     HandleWidth = 6;
     HandleHeight = 6;
@@ -34,21 +35,24 @@ type
     function IsMouseInSizingHandle(X, Y: Integer): boolean;
 
   private
-    InSizingHandle: boolean;
-    ResizeInProgress: boolean;
-    MoveInProgress: boolean;
-    ResizeHorz: boolean;
-    ResizeVert: boolean;
-    StartX: integer;
-    StartY: integer;
-    EditMode: boolean;
-    Color: TColor;
-    TextIsVertical: boolean;
+    FInSizingHandle: boolean;
+    FResizeInProgress: boolean;
+    FMoveInProgress: boolean;
+    FResizeHorz: boolean;
+    FResizeVert: boolean;
+    FStartX: integer;
+    FStartY: integer;
+    FEditMode: boolean;
+    FColor: TColor;
+    FTextIsVertical: boolean;
+    FHostedLabel: TLabel;
 
   protected
     procedure Paint; override;
+    procedure Notification(AComponent: TComponent;
+                           AOperation: TOperation); override;
   public
-    HostedLabel: TLabel;
+    property HostedLabel: TLabel read FHostedLabel;
 
     constructor Create(AOwner: TComponent; Text: string); reintroduce; overload;
     destructor Destroy; override;
@@ -68,48 +72,38 @@ constructor TSizeableLabel.Create(AOwner: TComponent; Text: string);
 begin
   inherited Create(AOwner);
 
-  HostedLabel := TLabel.Create(AOwner);
-  HostedLabel.Left := HandleWidth;
-  HostedLabel.Top := HandleHeight;
-  HostedLabel.Caption := ' ' + Text + ' ';
-  HostedLabel.Width := 90;
-  HostedLabel.Height := 15;
-  HostedLabel.Parent := Self;
-  HostedLabel.Visible := true;
+  FHostedLabel := TLabel.Create(AOwner);
+  FHostedLabel.Left := HandleWidth;
+  FHostedLabel.Top := HandleHeight;
+  FHostedLabel.Caption := ' ' + Text + ' ';
+  FHostedLabel.Width := 90;
+  FHostedLabel.Height := 15;
+  FHostedLabel.Parent := Self;
+  FHostedLabel.Visible := True;
 
-  InSizingHandle := false;
-  ResizeInProgress := false;
-  MoveInProgress := false;
-  ResizeHorz := false;
-  ResizeVert := false;
   Width := HostedLabel.Width + (2 * HandleWidth);
   Height := HostedLabel.Height + (2 * HandleHeight);
-  EditMode := false;
   Color := clWhite;
-  TextIsVertical := false;
 
-  Self.OnMouseDown := Self.HandleMouseDown;
-  Self.OnMouseMove := Self.HandleMouseMove;
-  Self.OnMouseUp := Self.HandleMouseUp;
-  Self.OnMouseEnter := Self.HandleMouseEnter;
-  Self.OnMouseLeave := Self.HandleMouseLeave;
+  OnMouseDown := HandleMouseDown;
+  OnMouseMove := HandleMouseMove;
+  OnMouseUp := HandleMouseUp;
+  OnMouseEnter := HandleMouseEnter;
+  OnMouseLeave := HandleMouseLeave;
 
-  HostedLabel.OnMouseDown := Self.HandleMouseDown;
-  HostedLabel.OnMouseMove := Self.HandleMouseMove;
-  HostedLabel.OnMouseUp := Self.HandleMouseUp;
-  HostedLabel.OnMouseEnter := Self.HandleMouseEnter;
-  HostedLabel.OnMouseLeave := Self.HandleMouseLeave;
+  FHostedLabel.OnMouseDown := HandleMouseDown;
+  FHostedLabel.OnMouseMove := HandleMouseMove;
+  FHostedLabel.OnMouseUp := HandleMouseUp;
+  FHostedLabel.OnMouseEnter := HandleMouseEnter;
+  FHostedLabel.OnMouseLeave := HandleMouseLeave;
 end;
 
 //******************************************************************************
 
 destructor TSizeableLabel.Destroy;
 begin
-  if HostedLabel <> nil then
-  begin
-    HostedLabel.Free;
-    HostedLabel := nil;
-  end;
+  FHostedLabel.Free;
+  FHostedLabel := nil;
 
   inherited;
 end;
@@ -118,8 +112,8 @@ end;
 
 procedure TSizeableLabel.SetEditMode(AEditMode: boolean);
 begin
-  EditMode := AEditMode;
-  Self.Invalidate;
+  FEditMode := AEditMode;
+  Invalidate;
 end;
 
 //******************************************************************************
@@ -133,8 +127,8 @@ var
   vertLocation: TVertLocation;
   horzLocation: THorzLocation;
 begin
-  InHorzRange := false;
-  InVertRange := false;
+  InHorzRange := False;
+  InVertRange := False;
 
   HalfWidth := Width DIV 2;
   HalfHeight := Height DIV 2;
@@ -147,11 +141,11 @@ begin
     // mouse in left half
     if X < HandleWidth then
     begin
-      InHorzRange := true;
+      InHorzRange := True;
       horzLocation := hlocLeft;
     end else if X > (HalfWidth - HalfHandleWidth) then
     begin
-      InHorzRange := true;
+      InHorzRange := True;
       horzLocation := hlocMiddle;
     end;
   end else
@@ -159,11 +153,11 @@ begin
     // mouse in right half
     if X > (Width - HandleWidth) then
     begin
-      InHorzRange := true;
+      InHorzRange := True;
       horzLocation := hlocRight;
     end else if X < (HalfWidth + HalfHandleWidth) then
     begin
-      InHorzRange := true;
+      InHorzRange := True;
       horzLocation := hlocMiddle;
     end;
   end;
@@ -175,22 +169,22 @@ begin
       // mouse in upper half
       if Y < HandleHeight then
       begin
-        InVertRange := true;
+        InVertRange := True;
         vertLocation := vlocTop;
       end else if Y > (HalfHeight - HalfHandleHeight) then
       begin
-        InVertRange := true;
+        InVertRange := True;
         vertLocation := vlocMiddle;
       end;
     end else begin
       // mouse in lower half
       if Y > (Height - HandleHeight) then
       begin
-        InVertRange := true;
+        InVertRange := True;
         vertLocation := vlocBottom;
       end else if Y < (HalfHeight + HalfHandleHeight) then
       begin
-        InVertRange := true;
+        InVertRange := True;
         vertLocation := vlocMiddle;
       end;
     end;
@@ -198,23 +192,23 @@ begin
 
   if InHorzRange and InVertRange then
   begin
-    result := true;
+    Result := True;
 
-    ResizeHorz := false;
-    ResizeVert := false;
+    FResizeHorz := False;
+    FResizeVert := False;
 
     if vertLocation = vlocMiddle then
     begin
       Screen.Cursor := crSizeWE;
-      ResizeHorz := true;
+      FResizeHorz := True;
     end else if horzLocation = hlocMiddle then
     begin
       Screen.Cursor := crSizeNS;
-      ResizeVert := true;
+      FResizeVert := True;
     end else
     begin
-      ResizeHorz := true;
-      ResizeVert := true;
+      FResizeHorz := True;
+      FResizeVert := True;
 
       if vertLocation = vlocTop then
       begin
@@ -242,7 +236,7 @@ begin
     end;
   end else
   begin
-    result := false;
+    Result := False;
     Screen.Cursor := crDefault;
   end;
 end;
@@ -251,22 +245,22 @@ end;
 
 procedure TSizeableLabel.HandleMouseEnter(Sender: TObject);
 begin
-  InSizingHandle := false;
-  ResizeInProgress := false;
-  MoveInProgress := false;
-  ResizeHorz := false;
-  ResizeVert := false;
+  FInSizingHandle := False;
+  FResizeInProgress := False;
+  FMoveInProgress := False;
+  FResizeHorz := False;
+  FResizeVert := False;
 end;
 
 //******************************************************************************
 
 procedure TSizeableLabel.HandleMouseLeave(Sender: TObject);
 begin
-  InSizingHandle := false;
-  ResizeInProgress := false;
-  MoveInProgress := false;
-  ResizeHorz := false;
-  ResizeVert := false;
+  FInSizingHandle := False;
+  FResizeInProgress := False;
+  FMoveInProgress := False;
+  FResizeHorz := False;
+  FResizeVert := False;
   Screen.Cursor := crDefault;
 end;
 
@@ -281,86 +275,71 @@ var
   AbsDeltaX: integer;
   AbsDeltaY: integer;
 begin
-  if EditMode then
+  if FEditMode then
   begin
-    if not ResizeInProgress then
+    if not FResizeInProgress then
     begin
-      InSizingHandle := Self.IsMouseInSizingHandle(X, Y);
+      FInSizingHandle := IsMouseInSizingHandle(X, Y);
     end;
 
     if ssLeft in Shift then
     begin
-      DeltaX := X - StartX;
-      DeltaY := Y - StartY;
+      DeltaX := X - FStartX;
+      DeltaY := Y - FStartY;
 
-      if MoveInProgress then
+      if FMoveInProgress then
       begin
-        Self.SetBounds(Self.Left + DeltaX,
-                       Self.Top + DeltaY,
-                       Self.Width,
-                       Self.Height);
-      end else if ResizeInProgress then
+        SetBounds(Left + DeltaX, Top + DeltaY, Width, Height);
+      end else if FResizeInProgress then
       begin
-        if ResizeHorz then
+        if FResizeHorz then
         begin
-          if StartX <= HandleWidth then
+          if FStartX <= HandleWidth then
           begin
             AbsDeltaX := Abs(DeltaX);
             if DeltaX < 0 then
             begin
               // dragging left edge to left (increasing width and decreasing left)
-              HostedLabel.Width := HostedLabel.Width + AbsDeltaX;
-              Self.SetBounds(Self.Left - AbsDeltaX,
-                             Self.Top,
-                             Self.Width + AbsDeltaX,
-                             Self.Height);
+              FHostedLabel.Width := FHostedLabel.Width + AbsDeltaX;
+              SetBounds(Left - AbsDeltaX, Top, Width + AbsDeltaX, Height);
             end else
             begin
               // dragging left edge to right (decreasing width and increasing left)
-              HostedLabel.Width := HostedLabel.Width - AbsDeltaX;
-              Self.SetBounds(Self.Left + AbsDeltaX,
-                             Self.Top,
-                             Self.Width - AbsDeltaX,
-                             Self.Height);
+              FHostedLabel.Width := FHostedLabel.Width - AbsDeltaX;
+              SetBounds(Left + AbsDeltaX, Top, Width - AbsDeltaX, Height);
             end;
           end else
           begin
-            HostedLabel.Width := HostedLabel.Width + DeltaX;
-            Self.Width := Self.Width + DeltaX;
+            FHostedLabel.Width := FHostedLabel.Width + DeltaX;
+            Width := Width + DeltaX;
           end;
         end;
 
-        if ResizeVert then
+        if FResizeVert then
         begin
-          if StartY <= HandleHeight then
+          if FStartY <= HandleHeight then
           begin
             AbsDeltaY := Abs(DeltaY);
             if DeltaY < 0 then
             begin
               // dragging top up (increasing height and decreasing top)
-              HostedLabel.Height := HostedLabel.Height + AbsDeltaY;
-              Self.SetBounds(Self.Left,
-                             Self.Top - AbsDeltaY,
-                             Self.Width,
-                             Self.Height + AbsDeltaY);
+              FHostedLabel.Height := FHostedLabel.Height + AbsDeltaY;
+              SetBounds(Left, Top - AbsDeltaY, Width, Height + AbsDeltaY);
             end else
             begin
               // dragging top down (decreasing height and increasing top)
-              HostedLabel.Height := HostedLabel.Height - AbsDeltaY;
-              Self.SetBounds(Self.Left,
-                             Self.Top + AbsDeltaY,
-                             Self.Width,
-                             Self.Height - AbsDeltaY);
+              FHostedLabel.Height := FHostedLabel.Height - AbsDeltaY;
+              SetBounds(Left, Top + AbsDeltaY, Width, Height - AbsDeltaY);
             end;
           end else
           begin
-            HostedLabel.Height := HostedLabel.Height + DeltaY;
-            Self.Height := Self.Height + DeltaY;
+            FHostedLabel.Height := FHostedLabel.Height + DeltaY;
+            Height := Height + DeltaY;
           end;
         end;
 
-        StartX := X;
-        StartY := Y;
+        FStartX := X;
+        FStartY := Y;
       end;
     end;
   end else
@@ -376,21 +355,21 @@ procedure TSizeableLabel.HandleMouseDown(Sender: TObject;
                                          Shift: TShiftState;
                                          X, Y: Integer);
 begin
-  if EditMode then
+  if FEditMode then
   begin
-    InSizingHandle := Self.IsMouseInSizingHandle(X, Y);
+    FInSizingHandle := IsMouseInSizingHandle(X, Y);
 
-    StartX := X;
-    StartY := Y;
+    FStartX := X;
+    FStartY := Y;
 
-    if InSizingHandle then
+    if FInSizingHandle then
     begin
       // start of resize
-      ResizeInProgress := true;
+      FResizeInProgress := True;
     end else
     begin
       // start of move
-      MoveInProgress := true;
+      FMoveInProgress := True;
     end;
   end;
 end;
@@ -402,9 +381,9 @@ procedure TSizeableLabel.HandleMouseUp(Sender: TObject;
                                        Shift: TShiftState;
                                        X, Y: Integer);
 begin
-  if EditMode and ResizeInProgress then
+  if FEditMode and FResizeInProgress then
   begin
-    ResizeInProgress := false;
+    FResizeInProgress := False;
     Screen.Cursor := crDefault;
   end;
 end;
@@ -419,10 +398,10 @@ begin
   inherited;
 
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := Self.Color;
+  Canvas.Brush.Color := Color;
   Canvas.FillRect(ClientRect);
 
-  if EditMode then
+  if FEditMode then
   begin
     // draw 8 sizing handles
     Canvas.Pen.Color := clBlue;
@@ -477,22 +456,35 @@ end;
 
 //******************************************************************************
 
+procedure TSizeableLabel.Notification(AComponent: TComponent;
+                                      AOperation: TOperation);
+begin
+  inherited;
+
+  if (AOperation = opRemove) and (AComponent = FHostedLabel) then
+  begin
+    FHostedLabel := nil;
+  end;
+end;
+
+//******************************************************************************
+
 procedure TSizeableLabel.SetColor(AColor: TColor);
 begin
-  Self.Color := AColor;
-  Self.Invalidate;
+  Color := AColor;
+  Invalidate;
 end;
 
 //******************************************************************************
 
 procedure TSizeableLabel.SetTextVertical(ATextIsVertical: boolean);
 begin
-  Self.TextIsVertical := ATextIsVertical;
+  FTextIsVertical := ATextIsVertical;
   if ATextIsVertical then
   begin
     // flip the width and height
-    Height := HostedLabel.Width + (2 * HandleWidth);
-    Width := HostedLabel.Height + (2 * HandleHeight);
+    Height := FHostedLabel.Width + (2 * HandleWidth);
+    Width := FHostedLabel.Height + (2 * HandleHeight);
   end;
 end;
 

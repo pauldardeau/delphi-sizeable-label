@@ -72,7 +72,7 @@ constructor TSizeableLabel.Create(AOwner: TComponent; Text: string);
 begin
   inherited Create(AOwner);
 
-  FHostedLabel := TLabel.Create(AOwner);
+  FHostedLabel := TLabel.Create(Self);
   FHostedLabel.Left := HandleWidth;
   FHostedLabel.Top := HandleHeight;
   FHostedLabel.Caption := ' ' + Text + ' ';
@@ -102,9 +102,6 @@ end;
 
 destructor TSizeableLabel.Destroy;
 begin
-  FHostedLabel.Free;
-  FHostedLabel := nil;
-
   inherited;
 end;
 

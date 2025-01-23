@@ -173,7 +173,8 @@ begin
         InVertRange := True;
         vertLocation := vlocMiddle;
       end;
-    end else begin
+    end else
+	begin
       // mouse in lower half
       if Y > (Height - HandleHeight) then
       begin

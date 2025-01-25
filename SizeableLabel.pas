@@ -54,7 +54,7 @@ type
   public
     property HostedLabel: TLabel read FHostedLabel;
 
-    constructor Create(AOwner: TComponent; Text: string); reintroduce; overload;
+    constructor Create(AOwner: TComponent; AText: string); reintroduce; overload;
     destructor Destroy; override;
     procedure SetEditMode(AEditMode: boolean);
     procedure SetColor(AColor: TColor);
@@ -68,14 +68,14 @@ implementation
 
 //******************************************************************************
 
-constructor TSizeableLabel.Create(AOwner: TComponent; Text: string);
+constructor TSizeableLabel.Create(AOwner: TComponent; AText: string);
 begin
   inherited Create(AOwner);
 
   FHostedLabel := TLabel.Create(Self);
   FHostedLabel.Left := HandleWidth;
   FHostedLabel.Top := HandleHeight;
-  FHostedLabel.Caption := ' ' + Text + ' ';
+  FHostedLabel.Caption := ' ' + AText + ' ';
   FHostedLabel.Width := 90;
   FHostedLabel.Height := 15;
   FHostedLabel.Parent := Self;
